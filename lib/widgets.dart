@@ -76,3 +76,57 @@ class ComingSoon extends StatelessWidget {
     );
   }
 }
+
+/// Bank card design (same idea as the approved card): blue gradient, chip, number, holder.
+class BankCardView extends StatelessWidget {
+  final String bankName;
+  final String holder;
+  final String cardNumber;
+  const BankCardView({super.key, required this.bankName, required this.holder, required this.cardNumber});
+
+  String get _grouped {
+    final d = cardNumber.replaceAll(RegExp(r'\D'), '');
+    if (d.isEmpty) return '•••• •••• •••• ••••';
+    return RegExp(r'.{1,4}').allMatches(d).map((m) => m.group(0)).join(' ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [Color(0xFF1F6FD1), Color(0xFF0B3B7A)]),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 14, offset: Offset(0, 8))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(bankName.isEmpty ? 'بانک' : bankName,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+              const Spacer(),
+              Container(
+                width: 38,
+                height: 28,
+                decoration: BoxDecoration(color: const Color(0xFFB5D4F4), borderRadius: BorderRadius.circular(6)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Text(_grouped,
+                style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 2, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(height: 16),
+          Text(holder.isEmpty ? '—' : holder,
+              style: const TextStyle(color: Color(0xFFD6E8FF), fontSize: 13)),
+        ],
+      ),
+    );
+  }
+}

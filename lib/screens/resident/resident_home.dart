@@ -10,7 +10,7 @@ import '../login_screen.dart';
 import 'bill_pdf.dart';
 import 'resident_messages_tab.dart';
 
-/// Resident panel: bills (with total debt) and messages.
+/// Resident panel: current bill, all bills with total debt, bank card and messages.
 class ResidentHome extends StatefulWidget {
   const ResidentHome({super.key});
 
@@ -21,8 +21,15 @@ class ResidentHome extends StatefulWidget {
 class _ResidentHomeState extends State<ResidentHome> {
   int _index = 0;
   List<BillRow> _bills = [];
+  Map<String, dynamic>? _bank;
   bool _loading = true;
   String? _error;
+
+  Map<String, dynamic> get _params => {
+        'p_building': appState.residentBuilding,
+        'p_unit': appState.residentUnit,
+        'p_check': appState.residentCheck,
+      };
 
   @override
   void initState() {
@@ -36,14 +43,16 @@ class _ResidentHomeState extends State<ResidentHome> {
       _error = null;
     });
     try {
-      final rows = await rpc('get_unit_history', {
-        'p_building': appState.residentBuilding,
-        'p_unit': appState.residentUnit,
-        'p_check': appState.residentCheck,
-      }) as List;
-      setState(() => _bills = rows.map((r) => BillRow.fromJson(r as Map<String, dynamic>)).toList());
+      final rows = await rpc('get_unit_history', _params) as List;
+      final bank = await rpc('get_building_bank_info', _params);
+      setState(() {
+        _bills = rows.map((r) => BillRow.fromJson(r as Map<String, dynamic>)).toList();
+        _bank = bank is Map<String, dynamic> ? bank : null;
+      });
     } on ApiException catch (e) {
       setState(() => _error = e.message);
+    } catch (_) {
+      setState(() => _error = 'اطلاعات دریافت نشد؛ اینترنت را بررسی کنید');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -72,6 +81,8 @@ class _ResidentHomeState extends State<ResidentHome> {
     if (_error != null) return EmptyState(text: _error!);
     final debt = _bills.where((b) => !b.isPaid).fold<num>(0, (s, b) => s + b.balance);
     final unpaidCount = _bills.where((b) => !b.isPaid).length;
+    final current = _bills.isEmpty ? null : _bills.first;
+
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -98,32 +109,56 @@ class _ResidentHomeState extends State<ResidentHome> {
               ],
             ),
           ),
-          const SizedBox(height: 18),
-          const Text('قبض‌های صادرشده', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-          const SizedBox(height: 10),
-          if (_bills.isEmpty) const EmptyState(text: 'هنوز قبضی صادر نشده است'),
-          ..._bills.map((b) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: Text(b.periodTitle, style: const TextStyle(fontWeight: FontWeight.w700))),
-                          StatusChip(paid: b.isPaid),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      _line('مبلغ قبض', fmtMoney(b.amountDue)),
-                      _line('پرداختی', fmtMoney(b.paidAmount)),
-                      _line('مانده', fmtMoney(b.balance)),
-                      _line('مهلت پرداخت', fmtJalali(b.dueDate)),
-                      if (b.verificationCode != null) _line('کد تأیید', b.verificationCode!),
-                    ],
-                  ),
-                ),
-              )),
+          const SizedBox(height: 16),
+          if (current == null)
+            const EmptyState(text: 'هنوز قبضی برای این واحد منتشر نشده است')
+          else ...[
+            const Text('قبض این دوره', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 8),
+            _billCard(current, highlight: true),
+          ],
+          const SizedBox(height: 16),
+          if (_bank != null &&
+              ((_bank!['card_number'] ?? '').toString().isNotEmpty)) ...[
+            const Text('پرداخت به کارت', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 8),
+            BankCardView(
+              bankName: (_bank!['bank_name'] ?? '').toString(),
+              holder: (_bank!['holder_name'] ?? '').toString(),
+              cardNumber: (_bank!['card_number'] ?? '').toString(),
+            ),
+            const SizedBox(height: 18),
+          ],
+          if (_bills.length > 1) ...[
+            const Text('قبض‌های قبلی', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 8),
+            ..._bills.skip(1).map((b) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _billCard(b),
+                )),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _billCard(BillRow b, {bool highlight = false}) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(b.periodTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: highlight ? 17 : 15))),
+              StatusChip(paid: b.isPaid),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _line('مبلغ قبض', fmtMoney(b.amountDue)),
+          _line('پرداختی', fmtMoney(b.paidAmount)),
+          _line('مانده', fmtMoney(b.balance)),
+          _line('مهلت پرداخت', fmtJalali(b.dueDate)),
+          if (b.verificationCode != null) _line('کد تأیید', b.verificationCode!),
         ],
       ),
     );
