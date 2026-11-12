@@ -7,6 +7,7 @@ import '../../state.dart';
 import '../../theme.dart';
 import '../../widgets.dart';
 import '../login_screen.dart';
+import 'bill_pdf.dart';
 import 'resident_messages_tab.dart';
 
 /// Resident panel: bills (with total debt) and messages.
@@ -45,6 +46,16 @@ class _ResidentHomeState extends State<ResidentHome> {
       setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _pdf() async {
+    try {
+      await printResidentBill();
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ساخت PDF انجام نشد')));
     }
   }
 
@@ -137,6 +148,7 @@ class _ResidentHomeState extends State<ResidentHome> {
       appBar: AppBar(
         title: Text('واحد ${appState.residentUnit ?? ''}'),
         actions: [
+          IconButton(onPressed: _pdf, icon: const Icon(Icons.picture_as_pdf_outlined), tooltip: 'PDF قبض'),
           IconButton(onPressed: _logout, icon: const Icon(Icons.logout, color: AppColors.red), tooltip: 'خروج'),
         ],
       ),

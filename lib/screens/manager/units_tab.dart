@@ -8,6 +8,7 @@ import '../../models.dart';
 import '../../state.dart';
 import '../../theme.dart';
 import '../../widgets.dart';
+import '../pdf/unit_history_pdf.dart';
 
 /// Units, referral box, add/edit unit and the full history of a unit.
 class UnitsTab extends StatefulWidget {
@@ -408,8 +409,24 @@ class _UnitHistorySheetState extends State<UnitHistorySheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('واحد ${widget.unit.label} — ${widget.unit.residentName}',
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('واحد ${widget.unit.label} — ${widget.unit.residentName}',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                ),
+                IconButton(
+                  onPressed: () => printUnitHistoryPdf(
+                    buildingName: appState.managerBuildingName ?? '',
+                    unitLabel: widget.unit.label,
+                    residentName: widget.unit.residentName,
+                    rows: _rows,
+                  ),
+                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                  tooltip: 'PDF سابقه',
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             AppCard(
               child: Row(
