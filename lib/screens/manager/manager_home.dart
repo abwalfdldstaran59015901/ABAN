@@ -5,6 +5,7 @@ import '../../theme.dart';
 import '../../widgets.dart';
 import '../login_screen.dart';
 import 'bills_tab.dart';
+import 'messages_tab.dart';
 import 'period_tab.dart';
 import 'units_tab.dart';
 
@@ -33,7 +34,7 @@ class _ManagerHomeState extends State<ManagerHome> {
       const UnitsTab(),
       const PeriodTab(),
       const BillsTab(),
-      const ComingSoon(title: 'پیام‌ها'),
+      const MessagesTab(),
     ];
     return Scaffold(
       appBar: AppBar(

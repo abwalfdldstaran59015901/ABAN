@@ -1,3 +1,5 @@
+import 'logic/jalali.dart';
+
 const _fa = '۰۱۲۳۴۵۶۷۸۹';
 
 /// Converts Latin digits to Persian digits.
@@ -61,4 +63,15 @@ String fmtJalali(String? iso) {
   if (d == null) return '—';
   final j = _toJalali(d.year, d.month, d.day);
   return toFa('${j[2]} ${jMonths[j[1] - 1]} ${j[0]}');
+}
+
+/// '2026-11-06T07:01:01+00:00' -> '۱۵ آبان ۱۴۰۵ · ۱۰:۳۰' (local time)
+String fmtDateTime(String? iso) {
+  if (iso == null || iso.isEmpty) return '';
+  final d = DateTime.tryParse(iso)?.toLocal();
+  if (d == null) return '';
+  final j = toJalali(d.year, d.month, d.day);
+  final hh = d.hour.toString().padLeft(2, '0');
+  final mm = d.minute.toString().padLeft(2, '0');
+  return toFa('${j[2]} ${jMonths[j[1] - 1]} ${j[0]} · $hh:$mm');
 }

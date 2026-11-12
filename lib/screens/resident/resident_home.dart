@@ -7,8 +7,9 @@ import '../../state.dart';
 import '../../theme.dart';
 import '../../widgets.dart';
 import '../login_screen.dart';
+import 'resident_messages_tab.dart';
 
-/// Resident panel: all bills of the unit and the total debt.
+/// Resident panel: bills (with total debt) and messages.
 class ResidentHome extends StatefulWidget {
   const ResidentHome({super.key});
 
@@ -17,6 +18,7 @@ class ResidentHome extends StatefulWidget {
 }
 
 class _ResidentHomeState extends State<ResidentHome> {
+  int _index = 0;
   List<BillRow> _bills = [];
   bool _loading = true;
   String? _error;
@@ -54,81 +56,65 @@ class _ResidentHomeState extends State<ResidentHome> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _billsView() {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) return EmptyState(text: _error!);
     final debt = _bills.where((b) => !b.isPaid).fold<num>(0, (s, b) => s + b.balance);
     final unpaidCount = _bills.where((b) => !b.isPaid).length;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('واحد ${appState.residentUnit ?? ''}'),
-        actions: [
-          IconButton(onPressed: _logout, icon: const Icon(Icons.logout, color: AppColors.red), tooltip: 'خروج'),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? EmptyState(text: _error!)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [AppColors.blue, AppColors.navy]),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('مجموع بدهی', style: TextStyle(color: Colors.white70)),
+                const SizedBox(height: 6),
+                Text(fmtMoney(debt),
+                    style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text(
+                  unpaidCount == 0 ? 'همه قبض‌ها پرداخت شده است' : '${fmtNum(unpaidCount)} قبض پرداخت نشده',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text('قبض‌های صادرشده', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          const SizedBox(height: 10),
+          if (_bills.isEmpty) const EmptyState(text: 'هنوز قبضی صادر نشده است'),
+          ..._bills.map((b) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [AppColors.blue, AppColors.navy]),
-                          borderRadius: BorderRadius.circular(22),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('مجموع بدهی', style: TextStyle(color: Colors.white70)),
-                            const SizedBox(height: 6),
-                            Text(fmtMoney(debt),
-                                style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800)),
-                            const SizedBox(height: 4),
-                            Text(
-                              unpaidCount == 0 ? 'همه قبض‌ها پرداخت شده است' : '${fmtNum(unpaidCount)} قبض پرداخت نشده',
-                              style: const TextStyle(color: Colors.white70, fontSize: 13),
-                            ),
-                          ],
-                        ),
+                      Row(
+                        children: [
+                          Expanded(child: Text(b.periodTitle, style: const TextStyle(fontWeight: FontWeight.w700))),
+                          StatusChip(paid: b.isPaid),
+                        ],
                       ),
-                      const SizedBox(height: 18),
-                      const Text('قبض‌های صادرشده', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                      const SizedBox(height: 10),
-                      if (_bills.isEmpty) const EmptyState(text: 'هنوز قبضی صادر نشده است'),
-                      ..._bills.map((b) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: AppCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(b.periodTitle,
-                                            style: const TextStyle(fontWeight: FontWeight.w700)),
-                                      ),
-                                      StatusChip(paid: b.isPaid),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _line('مبلغ قبض', fmtMoney(b.amountDue)),
-                                  _line('پرداختی', fmtMoney(b.paidAmount)),
-                                  _line('مانده', fmtMoney(b.balance)),
-                                  _line('مهلت پرداخت', fmtJalali(b.dueDate)),
-                                  if (b.verificationCode != null)
-                                    _line('کد تأیید', b.verificationCode!),
-                                ],
-                              ),
-                            ),
-                          )),
+                      const SizedBox(height: 8),
+                      _line('مبلغ قبض', fmtMoney(b.amountDue)),
+                      _line('پرداختی', fmtMoney(b.paidAmount)),
+                      _line('مانده', fmtMoney(b.balance)),
+                      _line('مهلت پرداخت', fmtJalali(b.dueDate)),
+                      if (b.verificationCode != null) _line('کد تأیید', b.verificationCode!),
                     ],
                   ),
                 ),
+              )),
+        ],
+      ),
     );
   }
 
@@ -140,6 +126,33 @@ class _ResidentHomeState extends State<ResidentHome> {
           Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
           const Spacer(),
           Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('واحد ${appState.residentUnit ?? ''}'),
+        actions: [
+          IconButton(onPressed: _logout, icon: const Icon(Icons.logout, color: AppColors.red), tooltip: 'خروج'),
+        ],
+      ),
+      body: IndexedStack(
+        index: _index,
+        children: [
+          _billsView(),
+          const ResidentMessagesTab(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'قبض من'),
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'پیام‌ها'),
         ],
       ),
     );
